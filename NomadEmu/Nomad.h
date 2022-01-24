@@ -5,14 +5,14 @@
 class Nomad
 {
 public:
-
-	const int CLOCK_SPEED = (1000 / 120);
 	
-	Nomad(std::vector<uint16_t> inputRom);
+	Nomad(std::vector<uint16_t> inputRom, int target_clock);
 	int  performOp();
 	void startEmulation();
 
 	struct State {
+		int TARGET_CLOCK_SPEED{ 1000 / 120 };
+
 		uint8_t pc{ 0 };
 		uint8_t registers[16];
 
@@ -22,28 +22,27 @@ public:
 		uint8_t im{ 0 };
 
 		std::vector<uint16_t> rom{ 0 };
-		uint16_t ram[256]{ 0 };
+		uint8_t ram[256]{ 0 };
 	};
 
 private:
 	State state;
 
-	void NOP_00();
-	void ADD_01();
-	void SUB_02();
-	void AND_03();
-	void NOT_04();
-	void  OR_05();
-	void XOR_06();
-	void LSL_07();
-	void LSR_08();
-	void MOV_09();
-	void LMR_0A();
-	void LRM_0B();
-	void JEQ_0C();
-	void JNQ_0D();
-	void JGT_0E();
-	void JLT_0F();
-
+	inline void NOP_00();
+	inline void ADD_01();
+	inline void SUB_02();
+	inline void AND_03();
+	inline void NOT_04();
+	inline void  OR_05();
+	inline void XOR_06();
+	inline void LSL_07();
+	inline void LSR_08();
+	inline void MOV_09();
+	inline void LMR_0A();
+	inline void LRM_0B();
+	inline void JEQ_0C();
+	inline void JNQ_0D();
+	inline void JGT_0E();
+	inline void JLT_0F();
 };
 

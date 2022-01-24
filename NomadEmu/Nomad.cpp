@@ -5,21 +5,26 @@
 #include <chrono>
 #include <thread>
 
-Nomad::Nomad(std::vector<uint16_t> inputRom) {
+Nomad::Nomad(std::vector<uint16_t> inputRom, int target_clock) {
 	state.rom = inputRom;
+	state.TARGET_CLOCK_SPEED = target_clock;
 }
 
 int Nomad::performOp() {
 
+	// Check to make sure we haven't reached the end of the ROM
 	if (state.pc >= state.rom.size()) {
 		return -1;
 	}
 
+	// Decode the next instruction
 	state.instruction = state.rom[state.pc];
 	state.op  = state.instruction >> 12;
 	state.rs  = (state.instruction >> 8) & 0x0F;
 	state.im = state.instruction & 0xFF;
 
+
+	// Perform the next instruction
 	switch (state.op) {
 	case 0x0: NOP_00(); break;
 	case 0x1: ADD_01(); break;
@@ -38,7 +43,6 @@ int Nomad::performOp() {
 	case 0xE: JGT_0E(); break;
 	case 0xF: JLT_0F(); break;
 	default: 
-		std::cerr << "How did we get here?" << std::endl;
 		return -2;
 	}
 
@@ -60,11 +64,11 @@ void Nomad::startEmulation() {
 				case -1: break;
 				// -2: Unknown Opcode
 				case -2:
-					std::cerr << "\nERROR: Unknown Opcode" << std::endl;
+					std::cerr << "\n[ERROR]: Unknown Opcode" << std::endl;
 					break;
 				// Any other error we haven't written a case for yet
 				default:
-					std::cerr << "\nERROR: Unknown Error" << std::endl;
+					std::cerr << "\n[ERROR]: Unknown Error" << std::endl;
 					break;
 			}
 
@@ -74,7 +78,7 @@ void Nomad::startEmulation() {
 		// Print the character stored in the TTY register
 		std::cout << state.registers[10];
 		// Sleep for CLOCK_SPEED milliseconds, which is an expression of 1000/Hz
-		std::this_thread::sleep_for(std::chrono::milliseconds(CLOCK_SPEED));
+		std::this_thread::sleep_for(std::chrono::milliseconds(state.TARGET_CLOCK_SPEED));
 	}
 	return;
 }
@@ -84,68 +88,85 @@ inline void Nomad::NOP_00() {
 }
 
 inline void Nomad::ADD_01() {
+	// Add A,B, output to RS
 	state.registers[state.rs] = state.registers[0] + state.registers[1];
 }
 
 inline void Nomad::SUB_02() {
-	state.registers[state.rs] = state.registers[0] + state.registers[1];
+	// Sub A-B, output to RS
+	state.registers[state.rs] = state.registers[0] - state.registers[1];
 }
 
 inline void Nomad::AND_03() {
+	// AND A,B, output to RS
 	state.registers[state.rs] = state.registers[0] & state.registers[1];
 }
 
 inline void Nomad::NOT_04() {
+	// NOT A, output to RS
 	state.registers[state.rs] = ~state.registers[0];
 }
 
 inline void Nomad::OR_05() {
+	// OR A,B, output to RS
 	state.registers[state.rs] = state.registers[0] | state.registers[1];
 }
 
 inline void Nomad::XOR_06() {
+	// XOR A,B, output to RS
 	state.registers[state.rs] = state.registers[0] ^ state.registers[1];
 }
 
 inline void Nomad::LSL_07() {
+	// LSL A<<B, output to RS
 	state.registers[state.rs] = state.registers[0] << state.im;
 }
 
 inline void Nomad::LSR_08() {
+	// LSR A>>B, output to RS
 	state.registers[state.rs] = state.registers[0] >> state.im;
 }
 
 inline void Nomad::MOV_09() {
-	state.registers[state.rs] = state.im;
+	// Registers i0,i1,i2,i3 are input only, and cannot be output to
+	if (state.rs < 0xD) {
+		state.registers[state.rs] = state.im;
+	}
 }
 
 inline void Nomad::LMR_0A() {
-	state.registers[state.rs] = state.im;
+	// Contents of RS -> 0xIM
+	state.registers[state.rs] = state.ram[state.im];
 }
 
 inline void Nomad::LRM_0B() {
-	state.ram[state.im] = static_cast<uint16_t>(state.registers[state.rs]);
+	// Contents of 0xIM -> RS
+	state.ram[state.im] = state.registers[state.rs];
 }
 
 inline void Nomad::JEQ_0C() {
+	// Jump to 0xIM if A==B
 	if (state.registers[0] == state.registers[1]) {
 		state.pc = state.im;
 	}
 }
 
 inline void Nomad::JNQ_0D() {
+	// Jump to 0xIM if A!=B
 	if (state.registers[0] != state.registers[1]) {
 		state.pc = state.im;
 	}
 }
 
 inline void Nomad::JGT_0E() {
+	// Jump to 0xIM if A>B
 	if (state.registers[0] > state.registers[1]) {
 		state.pc = state.im;
 	}
 }
 
 inline void Nomad::JLT_0F() {
+	// Jump to 0xIM if A<B
 	if (state.registers[0] < state.registers[1]) {
 		state.pc = state.im;
 	}
